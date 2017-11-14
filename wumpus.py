@@ -157,7 +157,7 @@ class Cave(object):
                 print("You ran into a wall")
 
 def set_keybinds():
-    pass
+    print("This doesn't work yet lol")
 
 def print_keybinds():
     for command in KEYBINDS:
