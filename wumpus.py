@@ -1,55 +1,86 @@
 import random
+import sys
 
-class Room(object):
-   def  __init__(self, attributes = '.'):
-        self.attributes = attributes
-        self.visited = False
+KEYBINDS = {
+    'd': "North",
+    'a': "West",
+    's': "South",
+    'h': "East",
+    'c': "List keybindings",
+    'exit': "Exit program"
+}
 
-   def describe_room(self):
-       for type in self.attributes:
-            print(ROOM_DESCRIPTIONS[type])
+ACTIONS = {
+    "North": [ 0, 1 ],
+    "West": [ -1, 0 ],
+    "South": [ 0, -1 ],
+    "East": [ 1, 0 ]
+}
 
 ROOM_DESCRIPTIONS = {
         'p': "",
         'x': "The room has already been visited",
-        '.': "The room is baren",
-        'o': "You fall into the pit of dispair never to come back out",
+        '.': "The room is barren",
+        'o': "You fall into the pit of despair never to come back out",
         '~': "You feel a faint breeze on your cheek",
         'w': "You freeze in your steps at the sight of the Wumpus and are powerless while you watch it consume you",
         's': "A foul odor comes over you",
         'g': "A faint shimmer passed before your eyes as you lay sight on the treasure. Gold"
 }
 
+def get_non_00_rand(size):
+    x = 0
+    y = 0
+
+    while x == 0 and y == 0:
+        x = random.randrange(size)
+        y = random.randrange(size)
+
+    return [x, y]
+
+class Player(object):
+    x = 0
+    y = 0
+
+    def __init__(self):
+        pass
+
+    def move(self, mv_x = 0, mv_y = 0):
+        self.x += mv_x
+        self.y += mv_y
+
+    def print(self):
+        print("You are at ({}, {})".format(self.x, self.y))
+
+class Room(object):
+   def  __init__(self, attributes = '.'):
+        self.attributes = attributes
+
+   def describe_room(self):
+        out = []
+
+        for type in self.attributes:
+            out.append(ROOM_DESCRIPTIONS[type])
+
+        return "\n".join(out)
+
 class Cave(object):
-    def __init__(self, size = 5):
+    def __init__(self, size = 5, player = Player()):
         self.cave = []
         self.size = size
-        
+        self.player = player
+
+        # Creates all the rooms
         for i in range(size):
             self.cave.append([])
 
             for j in range(size):
                 self.cave[i].append(Room())
 
-        wumpus_x = 0
-        wumpus_y = 0
-
-        while wumpus_x == 0 and wumpus_y == 0: 
-            wumpus_x = random.randrange(size)
-            wumpus_y = random.randrange(size)
+        # Sets the initial wumpus location
+        wumpus_x, wumpus_y = get_non_00_rand(size)
 
         self.cave[wumpus_x][wumpus_y].attributes += 'w'
-
-        self.wumpus_x = wumpus_x
-        self.wumpus_y = wumpus_y
-        
-        gold_x = random.randrange(size)
-        gold_y = random.randrange(size)
-
-        self.cave[gold_x][gold_y].attributes += 'g'
-
-        self.gold_x = gold_x
-        self.gold_y = gold_y
 
         for i in [1, -1]:
             new_x = wumpus_x + i
@@ -61,9 +92,12 @@ class Cave(object):
             if new_y in range(size):
                 self.cave[wumpus_x][new_y].attributes += 's'
 
+        # Sets the gold location
+        self.cave[random.randrange(size)][random.randrange(size)].attributes += 'g'
+
         for i in range(size):
             for j in range(size):
-                if random.random() < 0.1:
+                if random.random() < 0.1 and (i != 0 and j != 0):
                     self.cave[i][j].attributes += 'o'
 
                     for k in [1, -1]:
@@ -71,49 +105,95 @@ class Cave(object):
                         new_y = j + k
 
                         if new_x in range(size):
-                            self.cave[new_x][j].attributes += 's'
-                        
+                            self.cave[new_x][j].attributes += '~'
+
                         if new_y in range(size):
-                            self.cave[i][new_y].attributes += 's'
+                            self.cave[i][new_y].attributes += '~'
 
-class Player(object):
-    player_x = 0
-    player_y = 0
+        for i in range(size):
+            for j in range(size):
+                if len(self.cave[i][j].attributes) > 1:
+                    self.cave[i][j].attributes = self.cave[i][j].attributes.replace(".", "")
 
-    def __init__(self):
-        pass
+    def gameover(self):
+        return (self.player_at_gold() or
+                self.player_at_wumpus() or
+                self.player_at_pit())
 
-    def move(self, dir = ' '):
+    def player_at_gold(self):
+        player = self.player
+
+        return 'g' in self.cave[player.x][player.y].attributes
+
+    def player_at_wumpus(self):
+        player = self.player
+
+        return 'w' in self.cave[player.x][player.y].attributes
+
+    def player_at_pit(self):
+        player = self.player
+
+        return 'o' in self.cave[player.x][player.y].attributes
+
+    def print(self):
+        player = self.player
+
+        player.print()
+        print(self.cave[player.x][player.y].describe_room())
+
+    def move_player(self, dir = ' '):
         dir = dir.lower()
-       
-        if dir == 'd':
-            self.player_y += 1
-            print("You take a step to the North")
-        elif dir == 'a':
-            self.player_x -= 1
-            print("You take a step to the West")
-        elif dir == 's':
-            self.player_y -= 1
-            print("You take a step to the South")
-        elif dir == 'h':
-            self.player_x += 1
-            print("You take a step to the East")
 
-def player_commands():
-    print("Use d, h, s, or a to move North, East, South, and West respectively")
-    print("Usse i to get info on your tile")
+        if dir in KEYBINDS:
+            player = self.player
+
+            # Movement vectors x and y
+            mv_x, mv_y = ACTIONS[KEYBINDS[dir]]
+
+            if (player.x + mv_x in range(self.size) and
+                    player.y + mv_y in range(self.size)):
+                self.player.move(mv_x, mv_y)
+            else:
+                print("You ran into a wall")
+
+def set_keybinds():
+    pass
+
+def print_keybinds():
+    for command in KEYBINDS:
+        print(": ".join([command, KEYBINDS[command]]))
 
 cave = Cave()
-player = Player()
 
-player_commands()
+print("Current keybindings:")
+print_keybinds()
+print("Do you want to change the keybindings? (y/n)", end = "> ")
 
-while (player.player_x != cave.gold_x and player.player_y != cave.gold_y or
-        player.player_x != cave.wumpus_x and player.player_y != cave.wumpus_y):
-    # prints room description
-    cave.cave[player.player_x][player.player_y].describe_room()
-    
+if input().lower() == 'y':
+    set_keybinds()
+
+while True:
+    # Prints cave description
+    print()
+    cave.print()
+
+    if cave.gameover():
+        if cave.player_at_wumpus():
+            print("The Wumpus got you!")
+        elif cave.player_at_pit():
+            print("You had a slight misstep..")
+        elif cave.player_at_gold():
+            print("You found the gold!")
+
+        break
+
+    print("Input command", end = '> ')
+
     p_input = input()
 
     if p_input in "dash":
-        player.move(p_input)
+        cave.move_player(p_input)
+    elif p_input == "c":
+        print_keybinds()
+    elif p_input == "exit":
+        sys.exit("Bye!")
