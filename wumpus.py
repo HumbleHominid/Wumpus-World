@@ -6,7 +6,7 @@ KEYBINDS = {
     'a': "West",
     's': "South",
     'h': "East",
-    'c': "List keybindings",
+    'help': "List keybindings",
     'exit': "Exit program"
 }
 
@@ -138,7 +138,6 @@ class Cave(object):
     def print(self):
         player = self.player
 
-        player.print()
         print(self.cave[player.x][player.y].describe_room())
 
     def move_player(self, dir = ' '):
@@ -149,7 +148,7 @@ class Cave(object):
 
             # Movement vectors x and y
             mv_x, mv_y = ACTIONS[KEYBINDS[dir]]
-
+            
             if (player.x + mv_x in range(self.size) and
                     player.y + mv_y in range(self.size)):
                 self.player.move(mv_x, mv_y)
@@ -193,7 +192,7 @@ while True:
 
     if p_input in "dash":
         cave.move_player(p_input)
-    elif p_input == "c":
+    elif p_input == "help":
         print_keybinds()
     elif p_input == "exit":
         sys.exit("Bye!")
